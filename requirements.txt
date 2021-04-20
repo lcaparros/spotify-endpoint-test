@@ -4,3 +4,4 @@ behave~=1.2.6
 parse~=1.19.0
 setuptools~=56.0.0
 python-json-logger~=2.0.1
+requests~=2.25.1

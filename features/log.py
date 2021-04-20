@@ -6,7 +6,7 @@ from pythonjsonlogger import jsonlogger
 
 # Get custom logger
 def get_custom_logger():
-    log_path = "../../logs"
+    log_path = "../logs"
     file_name = "testSuite"
     logger = logging.getLogger(__name__)
     log_level = logging.DEBUG

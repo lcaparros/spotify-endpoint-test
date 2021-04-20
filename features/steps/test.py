@@ -1,4 +1,4 @@
-from log import get_custom_logger
+from features.log import get_custom_logger
 import requests
 import json
 from utils import *
@@ -7,35 +7,77 @@ from behave import *
 log = get_custom_logger()
 
 
-@when('A {method} request is sent to {url}')
-def request_is_sent(context, method, url):
-    payload = "{\n    \"key1\": 1,\n    \"key2\": \"value2\"\n}"
+@Given('An artist ID such as {artist_id}')
+def given_an_artist_id(context, artist_id):
+    # Actually this method is not necessary, but I include it thinking of we could want to get the artist_id from
+    # Spotify API too
+    context.artist_id = artist_id
+    log.info("Artist Id: " + artist_id)
+
+
+@when('The artist information is requested')
+def request_is_sent(context):
     headers = {
-        'Content-Type': "application/json,text/plain",
-        'User-Agent': "PostmanRuntime/7.15.0",
-        'Accept': "*/*",
-        'Cache-Control': "no-cache",
-        'Postman-Token': "e908a437-88ea-4b00-af53-7a9a49033830,ba90e008-0f7f-4576-beb8-b7739c8961f1",
-        'Host': "httpbin.org",
-        'accept-encoding': "gzip, deflate",
-        'content-length': "42",
-        'Connection': "keep-alive",
-        'cache-control': "no-cache"
+        'Authorization': context.token,
+        'Content-Type': "application/json",
+        'Accept': "application/json"
     }
 
-    response = requests.request(method, url, data=payload, headers=headers)
+    response = requests.request("GET", context.url + context.artist_id, headers=headers)
     context.response = response
     log.info(pretty_request(response.request))
 
 
-@then('Response code is {code}')
+@when('The artist information is requested with no ID')
+def request_is_sent_with_no_id(context):
+    headers = {
+        'Authorization': context.token,
+        'Content-Type': "application/json",
+        'Accept': "application/json"
+    }
+
+    response = requests.request("GET", context.url, headers=headers)
+    context.response = response
+    log.info(pretty_request(response.request))
+
+
+@when('The artist information is requested with a non valid OAuth security token')
+def request_is_sent_with_no_id(context):
+    headers = {
+        'Authorization': "Bearer non valid token",
+        'Content-Type': "application/json",
+        'Accept': "application/json"
+    }
+
+    response = requests.request("GET", context.url, headers=headers)
+    context.response = response
+    log.info(pretty_request(response.request))
+
+
+@then('A {code} http response code is received')
 def response_code_is(context, code):
     log.info(pretty_response(context.response))
     assert context.response.status_code == int(code)
 
 
-@then('Response message is {message}')
-def response_message_is(context, message):
-    response = context.response.json()
-    log.info("Message is: " + response["message"])
-    assert response["message"] == message
+@then('A {code} http response code is received with the message {message}')
+def response_code_is_with_message(context, code, message):
+    log.info(pretty_response(context.response))
+    assert context.response.status_code == int(code)
+    assert json.loads(context.response.text)["error"]["message"] == message
+
+
+@then('The artist information is retrieved')
+def artist_information_is(context):
+    data = context.response.json()
+    for row in context.table:
+        actual = ""
+        if row["field"] == "spotify_url":
+            actual = data["external_urls"]["spotify"]
+        elif row["field"] == "followers":
+            actual = data["followers"]["total"]
+        else:
+            actual = data[row["field"]]
+        log.info(row["field"] + " field assert:\nExpected result:\n\t" +
+                 str(row["value"]) + "\nExpected result:\n\t" + str(actual))
+        assert str(actual) == str(row["value"])
